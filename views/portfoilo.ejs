@@ -1,0 +1,40 @@
+<h2>Portfolio</h2>
+<p>User: <%= user && user.email ? user.email : '' %></p>
+
+<h3>Holdings</h3>
+<% if (!holdingList || holdingList.length === 0) { %>
+  <p>No holdings yet.</p>
+<% } else { %>
+  <table class="table">
+    <thead><tr><th>Symbol</th><th>Qty</th><th>Total Cost</th></tr></thead>
+    <tbody>
+      <% holdingList.forEach(function(h) { %>
+        <tr>
+          <td><%= h.symbol %></td>
+          <td><%= h.qty %></td>
+          <td>₹<%= h.totalCost %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+<% } %>
+
+<h3>Orders</h3>
+<% if (!orders || orders.length === 0) { %>
+  <p>No orders yet.</p>
+<% } else { %>
+  <table class="table">
+    <thead><tr><th>Time</th><th>Symbol</th><th>Type</th><th>Qty</th><th>Price</th></tr></thead>
+    <tbody>
+      <% orders.forEach(function(o) { %>
+        <tr>
+          <td><%= new Date(o.createdAt).toLocaleString() %></td>
+          <td><%= o.symbol %></td>
+          <td><%= o.type %></td>
+          <td><%= o.quantity %></td>
+          <td>₹<%= o.price %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>

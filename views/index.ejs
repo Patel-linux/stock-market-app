@@ -1,0 +1,23 @@
+<h1>Your Watchlist</h1>
+
+<div class="actions">
+  <a class="btn" href="/stocks/add">Add Stock</a>
+  <a class="btn ghost" href="/auth/login">Login to trade</a>
+</div>
+
+<div class="cards">
+  <% if (!stocks || stocks.length === 0) { %>
+    <div class="card">No stocks yet. Add some.</div>
+  <% } %>
+
+  <% stocks.forEach(function(s) { %>
+    <div class="card">
+      <h3><a href="/stocks/<%= s.symbol %>"><%= s.symbol %></a></h3>
+      <small><%= s.name || '' %></small>
+      <p>Price: <strong><%= s.quote && s.quote.price !== null ? s.quote.price : '—' %></strong></p>
+      <p class="<%= s.quote && parseFloat(s.quote.change) >= 0 ? 'green' : 'red' %>">
+        Change: <%= s.quote && (s.quote.change !== null) ? s.quote.change : '—' %>
+      </p>
+    </div>
+  <% }); %>
+</div>

@@ -1,0 +1,48 @@
+<h2><%= symbol %> <small><%= meta && meta.name ? meta.name : '' %></small></h2>
+
+<div class="stock-overview">
+  <div class="big-price"><%= quote && quote.price !== null ? quote.price : '—' %></div>
+  <div>Change: <span class="<%= quote && quote.change >= 0 ? 'green' : 'red' %>"><%= quote && (quote.change !== null) ? quote.change : '—' %></span></div>
+</div>
+
+<div class="trade-actions">
+  <form method="post" action="/orders/trade">
+    <input type="hidden" name="symbol" value="<%= symbol %>">
+    <label>Type
+      <select name="type">
+        <option>BUY</option>
+        <option>SELL</option>
+      </select>
+    </label>
+    <label>Quantity
+      <input name="quantity" type="number" value="1" min="1" />
+    </label>
+    <button class="btn">Place Order (requires login)</button>
+  </form>
+</div>
+
+<div class="chart-card">
+  <canvas id="priceChart" width="800" height="300"></canvas>
+</div>
+
+<script>
+  (function() {
+    const labels =  JSON.stringify(chart.labels) ;
+    const data =  JSON.stringify(chart.data) ;
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "<%= symbol %> price",
+          data: data,
+          tension: 0.3,
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: { scales: { x: { display: false } } }
+    });
+  })();
+</script>

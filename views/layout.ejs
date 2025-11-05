@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Groww-style Stock App</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-flex">
+      <a class="logo" href="/">Groww Stocks</a>
+
+      <nav>
+        <a href="/">Home</a>
+        <a href="/stocks">Dashboard</a>
+        <a href="/orders/portfolio">Portfolio</a>
+        <a href="/stocks/add">Add Stock</a>
+        <a href="/auth/login">Login</a>
+        <a href="/auth/signup" class="btn">Signup</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <%- body %>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <small>© 2025 Groww-style Demo • Built for demo</small>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
