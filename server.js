@@ -3,18 +3,13 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
-require('dotenv').config(); // Load .env for local testing
+const MongoStore = require('connect-mongo');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// -------------------- Session --------------------
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'your_secret_key',
-    resave: false,
-    saveUninitialized: true
-}));
 
 // -------------------- MongoDB --------------------
 mongoose.connect(process.env.MONGO_URI, {
@@ -23,6 +18,21 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.log(err));
+
+// -------------------- Session --------------------
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGO_URI,
+        collectionName: 'sessions'
+    }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
+        secure: process.env.NODE_ENV === 'production' // HTTPS in production
+    }
+}));
 
 // -------------------- User Schema --------------------
 const userSchema = new mongoose.Schema({
@@ -42,7 +52,6 @@ app.post('/register', async (req, res) => {
         if (!username || !email || !password)
             return res.status(400).send("All fields are required");
 
-        // Hash password
         const hashedPassword = bcrypt.hashSync(password, 10);
 
         const newUser = new User({
@@ -59,7 +68,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login
+// Login (with session + JWT)
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -69,18 +78,30 @@ app.post('/login', async (req, res) => {
         const user = await User.findOne({ email });
         if (!user) return res.status(400).send("User not found");
 
-        // Compare password
         const isMatch = bcrypt.compareSync(password, user.password);
         if (!isMatch) return res.status(400).send("Invalid credentials");
 
-        // Store user session
+        // Store session
         req.session.userId = user._id;
 
-        res.send("Login successful");
+        // Create JWT token
+        const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
+        );
+
+        res.json({ message: "Login successful", token });
     } catch (err) {
         console.log(err);
         res.status(500).send("Server error");
     }
+});
+
+// Protected route example
+app.get('/profile', (req, res) => {
+    if (!req.session.userId) return res.status(401).send("Unauthorized");
+    res.send(`Welcome User ID: ${req.session.userId}`);
 });
 
 // Test Route
