@@ -14,12 +14,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (CSS, JS, images) from 'public' folder
+// Serve static files (CSS, JS, images)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // -------------------- View Engine --------------------
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views')); // your ejs files folder
+app.set('views', path.join(__dirname, 'views'));
 
 // -------------------- MongoDB --------------------
 mongoose.connect(process.env.MONGO_URI, {
@@ -50,17 +50,31 @@ const userSchema = new mongoose.Schema({
     email:    { type: String, required: true, unique: true },
     password: { type: String, required: true }
 });
-
 const User = mongoose.model('User', userSchema);
+
+// -------------------- Stock Schema --------------------
+const stockSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+});
+const Stock = mongoose.model('Stock', stockSchema);
 
 // -------------------- Routes --------------------
 
-// Home Page
-app.get('/', (req, res) => {
-    res.render('index'); // renders views/index.ejs
+// Home Page - list stocks
+app.get('/', async (req, res) => {
+    try {
+        const stocks = await Stock.find(); // fetch all stocks
+        res.render('index', { stocks });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error");
+    }
 });
 
 // Registration
+app.get('/register', (req, res) => res.render('register')); // register form
 app.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -76,14 +90,15 @@ app.post('/register', async (req, res) => {
         });
 
         await newUser.save();
-        res.redirect('/login'); // redirect to login page after registration
+        res.redirect('/login');
     } catch (err) {
         console.log(err);
         res.status(500).send("Server error");
     }
 });
 
-// Login (session + JWT)
+// Login
+app.get('/login', (req, res) => res.render('login')); // login form
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -96,38 +111,58 @@ app.post('/login', async (req, res) => {
         const isMatch = bcrypt.compareSync(password, user.password);
         if (!isMatch) return res.status(400).send("Invalid credentials");
 
-        // Store session
         req.session.userId = user._id;
 
-        // JWT token
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
         );
 
-        // Optionally pass token to frontend
-        res.redirect('/profile'); // redirect to profile page
+        res.redirect('/profile');
     } catch (err) {
         console.log(err);
         res.status(500).send("Server error");
     }
 });
 
-// Profile page (protected)
-app.get('/profile', (req, res) => {
+// Profile - protected
+app.get('/profile', async (req, res) => {
     if (!req.session.userId) return res.redirect('/login');
-    res.render('profile', { userId: req.session.userId }); // renders views/profile.ejs
+
+    try {
+        const user = await User.findById(req.session.userId);
+        const stocks = await Stock.find({ createdBy: req.session.userId });
+
+        res.render('profile', { user, stocks });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error");
+    }
 });
 
-// Login page
-app.get('/login', (req, res) => {
-    res.render('login'); // renders views/login.ejs
+// Add stock (protected)
+app.post('/stocks', async (req, res) => {
+    if (!req.session.userId) return res.status(401).send("Unauthorized");
+
+    try {
+        const { name, price } = req.body;
+        const newStock = new Stock({
+            name,
+            price,
+            createdBy: req.session.userId
+        });
+        await newStock.save();
+        res.redirect('/profile');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error");
+    }
 });
 
-// Catch-all route
+// Catch-all for 404
 app.get('*', (req, res) => {
-    res.status(404).render('404'); // optional 404 page
+    res.status(404).render('404');
 });
 
 // -------------------- Start Server --------------------
