@@ -5,11 +5,21 @@ const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
+
+// -------------------- Middleware --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (CSS, JS, images) from 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// -------------------- View Engine --------------------
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views')); // your ejs files folder
 
 // -------------------- MongoDB --------------------
 mongoose.connect(process.env.MONGO_URI, {
@@ -30,7 +40,7 @@ app.use(session({
     }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 1 day
-        secure: process.env.NODE_ENV === 'production' // HTTPS in production
+        secure: process.env.NODE_ENV === 'production'
     }
 }));
 
@@ -44,6 +54,11 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // -------------------- Routes --------------------
+
+// Home Page
+app.get('/', (req, res) => {
+    res.render('index'); // renders views/index.ejs
+});
 
 // Registration
 app.post('/register', async (req, res) => {
@@ -61,14 +76,14 @@ app.post('/register', async (req, res) => {
         });
 
         await newUser.save();
-        res.status(201).send("User registered successfully");
+        res.redirect('/login'); // redirect to login page after registration
     } catch (err) {
         console.log(err);
         res.status(500).send("Server error");
     }
 });
 
-// Login (with session + JWT)
+// Login (session + JWT)
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -84,29 +99,35 @@ app.post('/login', async (req, res) => {
         // Store session
         req.session.userId = user._id;
 
-        // Create JWT token
+        // JWT token
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
         );
 
-        res.json({ message: "Login successful", token });
+        // Optionally pass token to frontend
+        res.redirect('/profile'); // redirect to profile page
     } catch (err) {
         console.log(err);
         res.status(500).send("Server error");
     }
 });
 
-// Protected route example
+// Profile page (protected)
 app.get('/profile', (req, res) => {
-    if (!req.session.userId) return res.status(401).send("Unauthorized");
-    res.send(`Welcome User ID: ${req.session.userId}`);
+    if (!req.session.userId) return res.redirect('/login');
+    res.render('profile', { userId: req.session.userId }); // renders views/profile.ejs
 });
 
-// Test Route
-app.get('/', (req, res) => {
-    res.send("Server running!");
+// Login page
+app.get('/login', (req, res) => {
+    res.render('login'); // renders views/login.ejs
+});
+
+// Catch-all route
+app.get('*', (req, res) => {
+    res.status(404).render('404'); // optional 404 page
 });
 
 // -------------------- Start Server --------------------
