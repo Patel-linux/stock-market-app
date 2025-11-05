@@ -1,22 +1,23 @@
-// server.js (Auth Part with bcryptjs)
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+require('dotenv').config(); // Load .env for local testing
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session setup (optional)
+// -------------------- Session --------------------
 app.use(session({
-    secret: 'your_secret_key',
+    secret: process.env.SESSION_SECRET || 'your_secret_key',
     resave: false,
     saveUninitialized: true
 }));
 
 // -------------------- MongoDB --------------------
-mongoose.connect('your_mongo_URI', {
+mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
@@ -38,11 +39,10 @@ const User = mongoose.model('User', userSchema);
 app.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-
         if (!username || !email || !password)
             return res.status(400).send("All fields are required");
 
-        // Hash password with bcryptjs
+        // Hash password
         const hashedPassword = bcrypt.hashSync(password, 10);
 
         const newUser = new User({
@@ -63,7 +63,6 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-
         if (!email || !password)
             return res.status(400).send("All fields are required");
 
@@ -71,10 +70,10 @@ app.post('/login', async (req, res) => {
         if (!user) return res.status(400).send("User not found");
 
         // Compare password
-        const isMatch = bcrypt.compareSync(inputPassword, storedPassword);
+        const isMatch = bcrypt.compareSync(password, user.password);
         if (!isMatch) return res.status(400).send("Invalid credentials");
 
-        // Optionally store user session
+        // Store user session
         req.session.userId = user._id;
 
         res.send("Login successful");
